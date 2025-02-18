@@ -19,6 +19,22 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
--keep class com.alfie.remindly.di.WorkManagerInitializer
+# Gson uses generic type information stored in a class file when working with
+# fields. Proguard removes such information by default, keep it.
+-keepattributes Signature
+
+# This is also needed for R8 in compat mode since multiple
+# optimizations will remove the generic signature such as class
+# merging and argument removal. See:
+# https://r8.googlesource.com/r8/+/refs/heads/main/compatibility-faq.md#troubleshooting-gson-gson
 -keep class com.google.gson.reflect.TypeToken { *; }
 -keep class * extends com.google.gson.reflect.TypeToken
+-keep class com.alfie.whitepaper.ui.common.canvas.DrawCanvasPayLoad
+-keep class com.alfie.whitepaper.ui.common.canvas.PathWrapper
+-keep class com.alfie.whitepaper.data.database.room.Project
+-keep class androidx.compose.runtime.snapshots.SnapshotStateList
+-keep class androidx.compose.ui.geometry.Offset
+-keep class * extends com.google.gson.internal.LinkedTreeMap
+
+# Optional. For using GSON @Expose annotation
+-keepattributes AnnotationDefault,RuntimeVisibleAnnotations

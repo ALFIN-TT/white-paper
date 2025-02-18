@@ -41,6 +41,6 @@ class HandleAdsUseCase @Inject constructor(
     }
 
     companion object {
-        const val FREE_ADS_SKIPP_COUNT = 1
+        const val FREE_ADS_SKIPP_COUNT = 5
     }
 }

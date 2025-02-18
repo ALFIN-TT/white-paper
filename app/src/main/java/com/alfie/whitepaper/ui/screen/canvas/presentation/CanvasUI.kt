@@ -1,10 +1,10 @@
 package com.alfie.whitepaper.ui.screen.canvas.presentation
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -22,6 +22,7 @@ import com.alfie.whitepaper.R
 import com.alfie.whitepaper.addmob.InterstitialAdHelper
 import com.alfie.whitepaper.core.utils.saveAsImage
 import com.alfie.whitepaper.core.utils.shareAsPng
+import com.alfie.whitepaper.core.utils.shareFile
 import com.alfie.whitepaper.core.utils.toast
 import com.alfie.whitepaper.data.constants.EXPORT_PROJECT
 import com.alfie.whitepaper.data.constants.SAVE_AS_JPEG
@@ -68,6 +69,7 @@ fun CanvasUI(
     )
 }
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 private fun DrawRootView(
     navController: NavController, userState: CanvasUIState, onHandleEvent: (CanvasEvents) -> Unit
@@ -75,7 +77,6 @@ private fun DrawRootView(
     Scaffold {
         Column {
             DrawScreenBody(
-                it,
                 navController = navController,
                 userState = userState,
                 onHandleEvent = onHandleEvent
@@ -86,7 +87,6 @@ private fun DrawRootView(
 
 @Composable
 private fun DrawScreenBody(
-    paddingValues: PaddingValues,
     navController: NavController,
     userState: CanvasUIState,
     onHandleEvent: (CanvasEvents) -> Unit
@@ -315,21 +315,28 @@ private fun DrawSaveDrawingBottomSheet(
                 EXPORT_PROJECT -> {
                     coroutineScope.launch {
                         val thumbnail = drawController.getDrawingAsBase64()
-                        onHandleEvent(CanvasEvents.SaveAndShareWithPayLoad(drawController.exportPath().apply {
-                            this.thumbnail = thumbnail
-                        }) {
-                            context.toast(R.string.str_project_exported_successfully_)
-                            idShowSaveDrawingSheet.value = false
-                        })
+                        onHandleEvent(
+                            CanvasEvents.SaveAndShareWithPayLoad(
+                                drawController.exportPath().apply {
+                                    this.thumbnail = thumbnail
+                                }) {
+                                context.toast(R.string.str_project_exported_successfully_)
+                                idShowSaveDrawingSheet.value = false
+                            })
                     }
                 }
 
                 SHARE_PROJECT -> {
-                    onHandleEvent(CanvasEvents.SaveAndShare {
-                        coroutineScope.launch {
-                            shareProject(drawController, context, uiState.drawCanvasPayLoadToString)
-                        }
-                    })
+                    coroutineScope.launch {
+                        val thumbnail = drawController.getDrawingAsBase64()
+                        shareFile(
+                            uiState.drawCanvasPayLoadToString(
+                                drawController.exportPath().apply {
+                                    this.thumbnail = thumbnail
+                                }
+                            ), context
+                        )
+                    }
                 }
             }
         }) {
