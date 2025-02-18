@@ -137,7 +137,7 @@ fun DrawSaveOptionCard(
                 bottom = 12.dp
             )
             .clickable {
-                onSave.invoke(saveOption)
+                onSave(saveOption)
             },
     ) {
         ConstraintLayout(
