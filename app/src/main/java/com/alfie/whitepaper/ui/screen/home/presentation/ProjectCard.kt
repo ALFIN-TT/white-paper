@@ -144,7 +144,7 @@ fun ProjectCard(
 
         var isLoadingCompleted by remember { mutableStateOf(true) }
         var bitmap by remember { mutableStateOf(ImageBitmap(1, 1)) }
-        LaunchedEffect(Unit) {
+        LaunchedEffect(drawCanvasPayLoad.thumbnail) {
             if (drawCanvasPayLoad.thumbnail?.isNotBlank() == true) {
                 launch {
                     isLoadingCompleted = false
@@ -216,18 +216,17 @@ private fun ProjectCard(
             )
         }
         Box(modifier = Modifier
-            .size(size)
+            .size(55.dp)
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
                         Color.Transparent, MaterialTheme.colorScheme.primary
-                    ), startY = 410f
+                    ),5f
                 )
             )
             .constrainAs(background) {
                 start.linkTo(parent.start)
                 end.linkTo(parent.end)
-                top.linkTo(parent.top)
                 bottom.linkTo(parent.bottom)
                 width = Dimension.fillToConstraints
             })

@@ -11,8 +11,10 @@ import com.alfie.whitepaper.core.utils.saveToDownloads
 import com.alfie.whitepaper.data.constants.Keys
 import com.alfie.whitepaper.data.database.room.Project
 import com.alfie.whitepaper.ui.common.canvas.DrawCanvasPayLoad
+import com.alfie.whitepaper.ui.screen.canvas.state.CanvasEvents
 import com.alfie.whitepaper.ui.screen.canvas.state.CanvasState
 import com.alfie.whitepaper.ui.screen.canvas.usecases.GetProjectUseCase
+import com.alfie.whitepaper.ui.screen.canvas.usecases.HandleAdsUseCase
 import com.alfie.whitepaper.ui.screen.canvas.usecases.SaveProjectUseCase
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
@@ -26,7 +28,8 @@ import javax.inject.Inject
 class CanvasUIViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val saveProjectUseCase: SaveProjectUseCase,
-    private val getProjectUseCase: GetProjectUseCase
+    private val getProjectUseCase: GetProjectUseCase,
+    private val handleAdsUseCase: HandleAdsUseCase
 ) : ViewModel() {
 
     private val _canvasState = mutableStateOf(StateHolder(CanvasState()))
@@ -56,10 +59,15 @@ class CanvasUIViewModel @Inject constructor(
         }
     }
 
-    private fun saveProject(project: Project) {
+    private fun saveProject(
+        payLoad: DrawCanvasPayLoad,
+        callback: () -> Unit
+    ) {
         viewModelScope.launch {
-            saveProjectUseCase.invoke(project)
+            val project = makeProject(payLoad)
+            saveProjectUseCase(project)
         }
+        callback.invoke()
     }
 
     private fun exportProject(
@@ -96,13 +104,14 @@ class CanvasUIViewModel @Inject constructor(
     }
 
     private fun makeProject(drawCanvasPayLoad: DrawCanvasPayLoad): Project {
+
         val json = GsonBuilder().create()
         val drawing = json.toJson(drawCanvasPayLoad)
         val drawingName = drawCanvasPayLoad.name.ifEmpty { "Drawing_${getCurrentDateTime()}" }
         return Project(
             name = drawingName,
             drawing = drawing,
-            thumbnail = drawCanvasPayLoad.thumbnail?:""
+            thumbnail = drawCanvasPayLoad.thumbnail ?: ""
         )
     }
 
@@ -115,19 +124,37 @@ class CanvasUIViewModel @Inject constructor(
     fun drawCanvasPayLoadToString(drawCanvasPayLoad: DrawCanvasPayLoad) =
         makeProjectToJsonString(drawCanvasPayLoad).second
 
-
-    fun onSaveRequested(
-        payLoad: DrawCanvasPayLoad, callback: () -> Unit
-    ) {
-        val project = makeProject(payLoad)
-        saveProject(project)
-        callback.invoke()
+    fun handleEvent(event: CanvasEvents) {
+        when (event) {
+            is CanvasEvents.SaveAndShareWithPayLoad -> saveProject(event.payLoad, event.onSave)
+            is CanvasEvents.Export -> exportProject(event.payLoad, event.onExport)
+            is CanvasEvents.SaveAndShare -> event.onSave()
+        }
     }
 
-    fun onExportRequested(
-        payLoad: DrawCanvasPayLoad,
-        callback: () -> Unit
+    fun handleEventsWithAd(
+        event: CanvasEvents,
+        onShowAdd: () -> Unit,
+        onAdSkipped: () -> Unit,
+        onNoAds: () -> Unit = {}
     ) {
-        exportProject(payLoad, callback)
+        when (event) {
+            is CanvasEvents.SaveAndShareWithPayLoad,
+            is CanvasEvents.SaveAndShare,
+            is CanvasEvents.Export -> {
+                handleAdsUseCase(
+                    onShowAdd = onShowAdd,
+                    onAdSkipped = {
+                        handleEvent(event)
+                        onAdSkipped()
+                    }
+                )
+            }
+
+            else -> {
+                handleEvent(event)
+                onNoAds()
+            }
+        }
     }
 }

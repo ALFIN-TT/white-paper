@@ -35,20 +35,24 @@ import androidx.constraintlayout.compose.Dimension
 import com.alfie.whitepaper.R
 import com.alfie.whitepaper.data.constants.BY_SYSTEM
 import com.alfie.whitepaper.data.constants.DARK_MODE
+import com.alfie.whitepaper.data.constants.DarkThemeOption
 import com.alfie.whitepaper.data.constants.LIGHT_MODE
-import com.alfie.whitepaper.ui.screen.home.state.HomeUserEvents
-import com.alfie.whitepaper.ui.screen.home.state.HomeUserState
+import com.alfie.whitepaper.ui.screen.home.state.HomeEvent
+import com.alfie.whitepaper.ui.screen.home.state.HomeUIState
 import com.alfie.whitepaper.ui.theme.montserratFamily
 
 @Composable
 fun DrawAppPreferenceDialog(
-    userState: HomeUserState,
-    userEvent: HomeUserEvents,
+    uiState: HomeUIState,
+    onHandleEvent: (HomeEvent) -> Unit,
     isOpened: MutableState<Boolean>,
+    onFindDarkThemeName: (@DarkThemeOption Int) -> Int,
 ) {
     Dialog(onDismissRequest = { isOpened.value = false }) {
         DrawAppPreferenceDialogUI(
-            userState = userState, userEvent = userEvent
+            uiState = uiState,
+            onHandleEvent = onHandleEvent,
+            onFindDarkThemeName = onFindDarkThemeName
         )
     }
 }
@@ -56,8 +60,9 @@ fun DrawAppPreferenceDialog(
 @Composable
 private fun DrawAppPreferenceDialogUI(
     modifier: Modifier = Modifier,
-    userState: HomeUserState,
-    userEvent: HomeUserEvents,
+    uiState: HomeUIState,
+    onFindDarkThemeName: (@DarkThemeOption Int) -> Int,
+    onHandleEvent: (HomeEvent) -> Unit,
 ) {
 
     val darkThemeOptions = listOf(DARK_MODE, LIGHT_MODE, BY_SYSTEM)
@@ -114,7 +119,7 @@ private fun DrawAppPreferenceDialogUI(
                     bottom.linkTo(dynamicThemeLabel.bottom)
                     start.linkTo(dynamicThemeLabel.end)
                     end.linkTo(parent.end)
-                }, userState = userState, userEvent = userEvent
+                }, uiState = uiState, onHandleEvent = onHandleEvent
             )
             Divider(
                 Modifier
@@ -150,13 +155,13 @@ private fun DrawAppPreferenceDialogUI(
                 darkThemeOptions.forEach { option ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
-                            selected = (option == userState.isEnableDarkTheme.value),
+                            selected = (option == uiState.isEnableDarkTheme.value),
                             onClick = {
-                                userEvent.onDarkThemeChange.invoke(option)
-                                userState.isEnableDarkTheme.value = option
+                                onHandleEvent(HomeEvent.SetDarkTheme(option))
+                                uiState.isEnableDarkTheme.value = option
                             })
                         Text(
-                            text = stringResource(id = userState.getDarkThemeOptionName(option)),
+                            text = stringResource(id = onFindDarkThemeName(option)),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(start = 1.dp),
                             fontSize = 12.sp,
@@ -173,8 +178,8 @@ private fun DrawAppPreferenceDialogUI(
 @Composable
 private fun DrawDynamicThemeSwitch(
     modifier: Modifier = Modifier,
-    userState: HomeUserState,
-    userEvent: HomeUserEvents
+    uiState: HomeUIState,
+    onHandleEvent: (HomeEvent) -> Unit,
 ) {
     val dynamicColorContentDesc = stringResource(id = R.string.str_dynamic_color)
 
@@ -183,10 +188,10 @@ private fun DrawDynamicThemeSwitch(
             contentDescription = dynamicColorContentDesc
             role = Role.Switch
         },
-        checked = userState.isEnableDynamicTheme.value,
+        checked = uiState.isEnableDynamicTheme.value,
         onCheckedChange = {
-            userEvent.onDynamicThemeChange.invoke(it)
-            userState.isEnableDynamicTheme.value = it
+            onHandleEvent(HomeEvent.SetDynamicTheme(it))
+            uiState.isEnableDynamicTheme.value = it
         }, colors = SwitchDefaults.colors(
             checkedThumbColor = MaterialTheme.colorScheme.primary,
             checkedTrackColor = Color.White.copy(alpha = .5f),

@@ -13,12 +13,12 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ProgressLoader(
-    showProgressBar: MutableState<Boolean>
+    showProgressBar: Boolean
 ) {
-    if (showProgressBar.value) {
+    if (showProgressBar) {
         Box(modifier = Modifier
             .fillMaxSize()
-            .clickable(enabled = !showProgressBar.value) {
+            .clickable(enabled = !showProgressBar) {
                 // Disable interaction when progress bar is visible
             }) {
             CircularProgressIndicator(

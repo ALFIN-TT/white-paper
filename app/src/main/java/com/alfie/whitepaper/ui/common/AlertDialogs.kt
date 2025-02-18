@@ -44,7 +44,7 @@ fun DrawAlertDialog(
     @StringRes description: Int,
     isOpened: MutableState<Boolean>,
     onClickPositiveButton: () -> Unit,
-    onClickNegativeButton: () -> Unit
+    onClickNegativeButton: () -> Unit = {}
 ) {
     Dialog(onDismissRequest = { isOpened.value = false }) {
         DrawAlertDialogUI(

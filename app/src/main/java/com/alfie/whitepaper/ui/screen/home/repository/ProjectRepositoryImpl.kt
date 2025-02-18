@@ -7,8 +7,9 @@ import com.alfie.whitepaper.data.database.room.ProjectDao
 import dagger.hilt.android.scopes.ActivityRetainedScoped
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
+import javax.inject.Singleton
 
-@ActivityRetainedScoped
+@Singleton
 class ProjectRepositoryImpl @Inject constructor(
     appDatabase: AppDatabase
 ) : ProjectRepository {

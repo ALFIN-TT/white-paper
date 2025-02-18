@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.alfie.whitepaper.R
+import com.alfie.whitepaper.addmob.InterstitialAdHelper.removeInterstitial
 import com.alfie.whitepaper.core.utils.toast
 import com.alfie.whitepaper.data.constants.BY_SYSTEM
 import com.alfie.whitepaper.ui.navigation.ScreenNavigation
@@ -92,6 +93,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        removeInterstitial()
         unregisterAppUpdate()
     }
 

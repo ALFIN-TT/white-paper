@@ -19,6 +19,7 @@ class AppPreferenceDataStore(val context: Context) {
     companion object {
         val DARK_THEME = intPreferencesKey("dark_theme")
         val DYNAMIC_THEME = booleanPreferencesKey("dynamic_theme")
+        val AD_FREE_COUNT = intPreferencesKey("ad_free_count")
     }
 
     suspend fun setDarkThemeStatus(@DarkThemeOption option: Int) {
@@ -41,10 +42,17 @@ class AppPreferenceDataStore(val context: Context) {
         it[DYNAMIC_THEME] ?: false
     }
 
+    suspend fun updateAdFreeCount(freeAdCount: Int) {
+        context.dataStore.edit {
+            it[AD_FREE_COUNT] = freeAdCount
+        }
+    }
+
     fun getAppPreferences() = context.dataStore.data.map {
         AppPreference(
             it[DYNAMIC_THEME] ?: false,
-            it[DARK_THEME] ?: LIGHT_MODE
+            it[DARK_THEME] ?: LIGHT_MODE,
+            it[AD_FREE_COUNT] ?: 0
         )
     }
 

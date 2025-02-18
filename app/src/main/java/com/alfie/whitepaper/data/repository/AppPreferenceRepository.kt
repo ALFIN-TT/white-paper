@@ -10,4 +10,5 @@ interface AppPreferenceRepository {
     suspend fun setDynamicThemeStatus(isDynamicTheme: Boolean)
     fun isDynamicTheme(): Flow<Boolean>
     fun getAppPreferences(): Flow<AppPreference>
+    suspend fun updateAdFreeCount(adFreeCount: Int)
 }

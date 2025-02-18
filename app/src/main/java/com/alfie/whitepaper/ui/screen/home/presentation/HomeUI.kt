@@ -25,37 +25,60 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.alfie.whitepaper.R
 import com.alfie.whitepaper.core.utils.shareImageFromAssets
 import com.alfie.whitepaper.core.utils.toast
+import com.alfie.whitepaper.data.constants.DarkThemeOption
 import com.alfie.whitepaper.data.constants.Keys
+import com.alfie.whitepaper.data.database.room.Project
 import com.alfie.whitepaper.ui.common.DrawAlertDialog
 import com.alfie.whitepaper.ui.common.ProgressLoader
 import com.alfie.whitepaper.ui.common.addmob.AdmobBanner
 import com.alfie.whitepaper.ui.navigation.Screen
-import com.alfie.whitepaper.ui.screen.home.state.HomeUserEvents
-import com.alfie.whitepaper.ui.screen.home.state.HomeUserState
+import com.alfie.whitepaper.ui.screen.home.state.HomeEvent
+import com.alfie.whitepaper.ui.screen.home.state.HomeUIState
 import com.alfie.whitepaper.ui.screen.home.state.InitialHomeUserState
+import com.alfie.whitepaper.ui.screen.home.viewmodel.HomeUIViewModel
 
 
 @Composable
 fun HomeUI(
-    navController: NavController, userState: HomeUserState, userEvent: HomeUserEvents
+    viewModel: HomeUIViewModel = hiltViewModel<HomeUIViewModel>(),
+    navController: NavController
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     DrawRootView(
-        navController = navController, userState = userState, userEvent = userEvent
+        navController = navController,
+        uiState = uiState,
+        onHandleEvent = { viewModel.handleEvent(it) },
+        onFindDarkThemeName = { viewModel.getDarkThemeOptionName(it) },
+        onImportProject = {
+            val dataFromFile =
+                context.contentResolver.openInputStream(it).use { it!!.reader().readText() }
+            viewModel.onImportProject(dataFromFile) { isSuccess, project ->
+                importProject(context, navController, isSuccess, project)
+            }
+        }
     )
 }
 
 @Composable
 private fun DrawRootView(
-    navController: NavController, userState: HomeUserState, userEvent: HomeUserEvents
+    navController: NavController,
+    uiState: HomeUIState,
+    onHandleEvent: (HomeEvent) -> Unit,
+    onFindDarkThemeName: (@DarkThemeOption Int) -> Int,
+    onImportProject: (Uri) -> Unit
 ) {
     val isOpenedAppPreferenceDialog = rememberSaveable { mutableStateOf(false) }
     val isOpenedDeleteProjectDialog = rememberSaveable { mutableStateOf(false) }
@@ -69,21 +92,23 @@ private fun DrawRootView(
                 .background(MaterialTheme.colorScheme.secondaryContainer)
         ) {
             DrawPreferenceDialog(
-                userState = userState, userEvent = userEvent, isOpened = isOpenedAppPreferenceDialog
+                uiState = uiState,
+                onHandleEvent = onHandleEvent,
+                isOpened = isOpenedAppPreferenceDialog,
+                onFindDarkThemeName = onFindDarkThemeName
             )
             DrawDeleteProjectDialog(
                 projectName = selectedProjectName,
-                userState = userState,
-                userEvent = userEvent,
+                onHandleEvent = onHandleEvent,
                 isOpened = isOpenedDeleteProjectDialog
             )
             DrawScreenBody(
                 isOpenedAppPreferenceDialog = isOpenedAppPreferenceDialog,
                 isOpenedDeleteProjectDialog = isOpenedDeleteProjectDialog,
                 selectedProjectName = selectedProjectName,
-                navController = navController,
-                userState = userState,
-                userEvent = userEvent
+                uiState = uiState,
+                onImportProject = onImportProject,
+                navController = navController
             )
         }
     }
@@ -95,17 +120,16 @@ private fun DrawScreenBody(
     isOpenedAppPreferenceDialog: MutableState<Boolean>,
     isOpenedDeleteProjectDialog: MutableState<Boolean>,
     selectedProjectName: MutableState<String>,
-    userState: HomeUserState,
-    userEvent: HomeUserEvents,
+    uiState: HomeUIState,
+    onImportProject: (Uri) -> Unit,
     navController: NavController
 ) {
     val context = LocalContext.current
-    LaunchedEffect(userState.initialState) {
+    LaunchedEffect(uiState.initialState) {
         manageProjectImportFromDeepLink(
-            initialHomeUserState = userState.initialState,
+            initialHomeUserState = uiState.initialState,
             context = context,
-            userEvent = userEvent,
-            navController = navController
+            onImportProject = onImportProject,
         )
     }
     val startForResult = rememberLauncherForActivityResult(
@@ -113,12 +137,10 @@ private fun DrawScreenBody(
     ) { result: ActivityResult ->
         manageProjectImport(
             result = result,
-            context = context,
-            userEvent = userEvent,
-            navController = navController
+            onImportProject = onImportProject
         )
     }
-    ProgressLoader(showProgressBar = userState.getProjectsLoader)
+    ProgressLoader(showProgressBar = uiState.isLoading)
     LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(
         start = 12.dp, top = 16.dp, end = 12.dp, bottom = 16.dp
     ), content = {
@@ -160,13 +182,13 @@ private fun DrawScreenBody(
         }
         items(
             span = { GridItemSpan(1) },
-            count = userState.homeState.value.projects.size
+            count = uiState.projects.size
         ) {
             DrawProjectCard(
                 count = it,
                 isOpenedDeleteProjectDialog = isOpenedDeleteProjectDialog,
                 selectedProjectName = selectedProjectName,
-                userState = userState,
+                uiState = uiState,
                 navController = navController
             )
         }
@@ -191,10 +213,10 @@ private fun DrawProjectCard(
     count: Int,
     isOpenedDeleteProjectDialog: MutableState<Boolean>,
     selectedProjectName: MutableState<String>,
-    userState: HomeUserState,
+    uiState: HomeUIState,
     navController: NavController
 ) {
-    val drawBoxPayLoad = userState.homeState.value.projects[count]
+    val drawBoxPayLoad = uiState.projects[count]
     ProjectCard(drawBoxPayLoad, onclick = {
         navController.navigate(route = Screen.CanvasScreen.route.plus("?${Keys.PROJECT_NAME}=${drawBoxPayLoad.name}"))
     }, onLongPress = {
@@ -205,11 +227,17 @@ private fun DrawProjectCard(
 
 @Composable
 private fun DrawPreferenceDialog(
-    isOpened: MutableState<Boolean>, userEvent: HomeUserEvents, userState: HomeUserState
+    isOpened: MutableState<Boolean>,
+    uiState: HomeUIState,
+    onHandleEvent: (HomeEvent) -> Unit,
+    onFindDarkThemeName: (@DarkThemeOption Int) -> Int,
 ) {
     if (isOpened.value) {
         DrawAppPreferenceDialog(
-            isOpened = isOpened, userState = userState, userEvent = userEvent
+            isOpened = isOpened,
+            uiState = uiState,
+            onHandleEvent = onHandleEvent,
+            onFindDarkThemeName = onFindDarkThemeName
         )
     }
 }
@@ -218,42 +246,26 @@ private fun DrawPreferenceDialog(
 private fun DrawDeleteProjectDialog(
     projectName: MutableState<String>,
     isOpened: MutableState<Boolean>,
-    userState: HomeUserState,
-    userEvent: HomeUserEvents
+    onHandleEvent: (HomeEvent) -> Unit
 ) {
     if (isOpened.value) {
         DrawAlertDialog(title = R.string.str_empty,
             description = R.string.msg_are_you_sure_you_want_to_delete_project,
             isOpened = isOpened,
             onClickPositiveButton = {
-                userState.getProjectsLoader.value = true
-                userEvent.onDelete(projectName.value) {
-                    userState.getProjectsLoader.value = false
-                    projectName.value = ""
-                }
-            },
-            onClickNegativeButton = {
-                //Do nothing
+                onHandleEvent(HomeEvent.DeleteProject(projectName.value))
             })
     }
 }
 
 private fun manageProjectImport(
     result: ActivityResult,
-    context: Context,
-    userEvent: HomeUserEvents,
-    navController: NavController
-
+    onImportProject: (Uri) -> Unit,
 ) {
     if (result.resultCode == Activity.RESULT_OK) {
         result.data?.let {
             if (it.data != null) {
-                importProject(
-                    uri = it.data!!,
-                    context = context,
-                    userEvent = userEvent,
-                    navController = navController
-                )
+                onImportProject(it.data!!)
             }
         }
     }
@@ -262,19 +274,13 @@ private fun manageProjectImport(
 private fun manageProjectImportFromDeepLink(
     initialHomeUserState: InitialHomeUserState,
     context: Context,
-    userEvent: HomeUserEvents,
-    navController: NavController
+    onImportProject: (Uri) -> Unit,
 ) {
     if (initialHomeUserState.projectFilePathFromDeepLink.isNotBlank()) {
         try {
             if (!initialHomeUserState.isDeeplinkLoadCompleted) {
                 val uri = Uri.parse(initialHomeUserState.projectFilePathFromDeepLink)
-                importProject(
-                    uri = uri,
-                    context = context,
-                    userEvent = userEvent,
-                    navController = navController
-                )
+                onImportProject(uri)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -288,18 +294,15 @@ private fun manageProjectImportFromDeepLink(
 
 private fun importProject(
     context: Context,
-    uri: Uri,
-    userEvent: HomeUserEvents,
-    navController: NavController
+    navController: NavController,
+    isSuccess: Boolean,
+    project: Project?,
 ) {
-    val dataFromFile = context.contentResolver.openInputStream(uri).use { it!!.reader().readText() }
-    userEvent.onImportProject(dataFromFile) { isSuccess, project ->
-        if (isSuccess) {
-            if (project != null) {
-                navController.navigate(route = Screen.CanvasScreen.route.plus("?${Keys.PROJECT_NAME}=${project.name}"))
-            }
-        } else {
-            context.toast(R.string.msg_unable_to_import_project_file_corrupted)
+    if (isSuccess) {
+        if (project != null) {
+            navController.navigate(route = Screen.CanvasScreen.route.plus("?${Keys.PROJECT_NAME}=${project.name}"))
         }
+    } else {
+        context.toast(R.string.msg_unable_to_import_project_file_corrupted)
     }
 }

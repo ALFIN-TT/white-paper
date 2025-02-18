@@ -14,12 +14,9 @@ import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.alfie.whitepaper.data.constants.Keys
 import com.alfie.whitepaper.ui.screen.canvas.presentation.CanvasUI
-import com.alfie.whitepaper.ui.screen.canvas.transformations.CanvasUIViewModelEventTransform
 import com.alfie.whitepaper.ui.screen.canvas.transformations.CanvasUIViewModelStateTransform
 import com.alfie.whitepaper.ui.screen.canvas.viewmodel.CanvasUIViewModel
 import com.alfie.whitepaper.ui.screen.home.presentation.HomeUI
-import com.alfie.whitepaper.ui.screen.home.transformations.HomeUIViewModelEventTransform
-import com.alfie.whitepaper.ui.screen.home.transformations.HomeUIViewModelStateTransform
 import com.alfie.whitepaper.ui.screen.home.viewmodel.HomeUIViewModel
 
 @Composable
@@ -85,17 +82,14 @@ private fun NavigateToHomeUI(
     navController: NavController
 ) {
     val viewModel = hiltViewModel<HomeUIViewModel>()
-    val userState = HomeUIViewModelStateTransform().transform(viewModel)
-    userState.apply {
-        isEnableDynamicTheme = isEnabledDynamicTheme
-        isEnableDarkTheme = isEnabledDarkTheme
-        initialState.projectFilePathFromDeepLink = projectFromDeepLink
-    }
-    val userEvent = HomeUIViewModelEventTransform().transform(viewModel)
+    viewModel.init(
+        isEnableDynamicTheme = isEnabledDynamicTheme,
+        isEnabledDarkTheme = isEnabledDarkTheme,
+        projectFromDeepLink = projectFromDeepLink
+    )
     HomeUI(
         navController = navController,
-        userState = userState,
-        userEvent = userEvent
+        viewModel = viewModel
     )
 }
 
@@ -103,10 +97,9 @@ private fun NavigateToHomeUI(
 private fun NavigateToCanvasUI(navController: NavController) {
     val viewModel = hiltViewModel<CanvasUIViewModel>()
     val userState = CanvasUIViewModelStateTransform().transform(viewModel)
-    val userEvent = CanvasUIViewModelEventTransform().transform(viewModel)
     CanvasUI(
         navController = navController,
         userState = userState,
-        userEvent = userEvent,
+        viewModel = viewModel,
     )
 }

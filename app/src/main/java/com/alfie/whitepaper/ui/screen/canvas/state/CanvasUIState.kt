@@ -1,10 +1,9 @@
 package com.alfie.whitepaper.ui.screen.canvas.state
 
-import com.alfie.basicnetworkapplication.ui.screens.core.BaseState
 import com.alfie.whitepaper.core.ui.core.StateHolder
 import com.alfie.whitepaper.ui.common.canvas.DrawCanvasPayLoad
 
-class CanvasUserState {
+class CanvasUIState {
     var canvasState: StateHolder<CanvasState> = StateHolder(CanvasState())
     var drawCanvasPayLoadToString: (DrawCanvasPayLoad) -> String = { _ -> "" }
 }
@@ -12,10 +11,10 @@ class CanvasUserState {
 
 data class CanvasState(
     var drawCanvasPayLoad: DrawCanvasPayLoad = DrawCanvasPayLoad()
-) : BaseState()
-
-
-data class CanvasUserEvents(
-    var onSave: (DrawCanvasPayLoad, (() -> Unit)) -> Unit = { _, _ -> },
-    var onExport: (DrawCanvasPayLoad, (() -> Unit)) -> Unit = { _, _ -> }
 )
+
+sealed interface CanvasEvents {
+    data class SaveAndShareWithPayLoad(val payLoad: DrawCanvasPayLoad, val onSave: () -> Unit) : CanvasEvents
+    data class SaveAndShare(val onSave: () -> Unit) : CanvasEvents
+    data class Export(val payLoad: DrawCanvasPayLoad, val onExport: () -> Unit) : CanvasEvents
+}

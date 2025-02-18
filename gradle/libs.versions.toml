@@ -19,6 +19,7 @@ uiTextGoogleFonts = "1.7.6"
 materialIconsExtended = "1.7.6"
 navigationCompose =  "2.8.5"
 gson = "2.10.1"
+kotlinxCollectionsImmutable = "0.3.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -58,6 +59,8 @@ androidx-datastore-core = { module = "androidx.datastore:datastore-core", versio
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 #gson
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+#mutable-list
+kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "kotlinxCollectionsImmutable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -30,6 +30,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Singleton
 
 @Module
@@ -48,8 +49,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providesGetProjectsUseCase(projectRepository: ProjectRepository): GetProjectsUseCase =
-        GetProjectsUseCaseImpl(projectRepository)
+    fun providesGetProjectsUseCase(projectRepository: ProjectRepository,@IoDispatcher dispatcher: CoroutineDispatcher): GetProjectsUseCase =
+        GetProjectsUseCaseImpl(projectRepository,dispatcher)
 
     @Provides
     @Singleton

@@ -39,6 +39,7 @@ android {
 
         resValue("string", "add_mob_app_id", "ca-app-pub-2034233031425888~5418118640")
         resValue("string", "add_mob_unit_id", "ca-app-pub-2034233031425888/8714365824")
+        resValue("string", "ad_mob_unit_id_interstitial", "ca-app-pub-2034233031425888/9992635936")
         // Creates a property for the FileProvider authority.
         val filesAuthorityValue = "$applicationId.fileprovider"
         // Creates a placeholder property to use in the manifest.
@@ -79,7 +80,6 @@ android {
 
         create("staging") {
             isDebuggable = true
-            applicationIdSuffix = ".staging"
             matchingFallbacks += listOf("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -98,7 +98,6 @@ android {
             isShrinkResources = false
             isDebuggable = true
             resValue("string", "app_name", "$appName Develop")
-            applicationIdSuffix = ".develop"
             setProperty(
                 "archivesBaseName",
                 appName.replace(' ', '_') + "_V${defaultConfig.versionName}_$date"
@@ -153,6 +152,8 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.compose.navigation)
     implementation(libs.androidx.constraintlayout.compose)
+
+    implementation(libs.kotlinx.collections.immutable)
 
     // Hilt
     implementation(libs.hilt.android)

@@ -21,4 +21,8 @@ class AppPreferenceRepositoryImpl(
 
     override fun getAppPreferences(): Flow<AppPreference> =
         appPreferenceDataStore.getAppPreferences()
+
+    override suspend fun updateAdFreeCount(adFreeCount: Int) {
+        appPreferenceDataStore.updateAdFreeCount(adFreeCount)
+    }
 }

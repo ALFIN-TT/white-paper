@@ -19,9 +19,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.alfie.whitepaper.R
+import com.alfie.whitepaper.addmob.InterstitialAdHelper
 import com.alfie.whitepaper.core.utils.saveAsImage
 import com.alfie.whitepaper.core.utils.shareAsPng
-import com.alfie.whitepaper.core.utils.shareFile
 import com.alfie.whitepaper.core.utils.toast
 import com.alfie.whitepaper.data.constants.EXPORT_PROJECT
 import com.alfie.whitepaper.data.constants.SAVE_AS_JPEG
@@ -36,28 +36,49 @@ import com.alfie.whitepaper.ui.common.canvas.DrawController
 import com.alfie.whitepaper.ui.common.canvas.rememberDrawController
 import com.alfie.whitepaper.ui.common.colorpicker.ColorSaver
 import com.alfie.whitepaper.ui.common.colorpicker.DrawColorPicker
-import com.alfie.whitepaper.ui.screen.canvas.state.CanvasUserEvents
-import com.alfie.whitepaper.ui.screen.canvas.state.CanvasUserState
+import com.alfie.whitepaper.ui.screen.canvas.state.CanvasEvents
+import com.alfie.whitepaper.ui.screen.canvas.state.CanvasUIState
+import com.alfie.whitepaper.ui.screen.canvas.viewmodel.CanvasUIViewModel
 import kotlinx.coroutines.launch
 
 
 @Composable
 fun CanvasUI(
     navController: NavController = rememberNavController(),
-    userState: CanvasUserState = CanvasUserState(),
-    userEvent: CanvasUserEvents = CanvasUserEvents()
+    userState: CanvasUIState = CanvasUIState(),
+    viewModel: CanvasUIViewModel
 ) {
-    DrawRootView(navController = navController, userState = userState, userEvent = userEvent)
+    val context = LocalContext.current
+    DrawRootView(navController = navController, userState = userState,
+        onHandleEvent = {
+            viewModel.handleEventsWithAd(
+                event = it,
+                onShowAdd = {
+                    //viewModel.isAdShowing(isAdShowing = true)
+                    InterstitialAdHelper.showInterstitialAd(context) {
+                        viewModel.handleEvent(event = it)
+                        //viewModel.isAdShowing(isAdShowing = false)
+                    }
+                },
+                onAdSkipped = {
+                    viewModel.handleEvent(it)
+                }
+            )
+        }
+    )
 }
 
 @Composable
 private fun DrawRootView(
-    navController: NavController, userState: CanvasUserState, userEvent: CanvasUserEvents
+    navController: NavController, userState: CanvasUIState, onHandleEvent: (CanvasEvents) -> Unit
 ) {
-    Scaffold { it ->
+    Scaffold {
         Column {
             DrawScreenBody(
-                it, navController = navController, userState = userState, userEvent = userEvent
+                it,
+                navController = navController,
+                userState = userState,
+                onHandleEvent = onHandleEvent
             )
         }
     }
@@ -67,8 +88,8 @@ private fun DrawRootView(
 private fun DrawScreenBody(
     paddingValues: PaddingValues,
     navController: NavController,
-    userState: CanvasUserState,
-    userEvent: CanvasUserEvents
+    userState: CanvasUIState,
+    onHandleEvent: (CanvasEvents) -> Unit
 ) {
     val undoVisibility = rememberSaveable { mutableStateOf(false) }
     val redoVisibility = rememberSaveable { mutableStateOf(false) }
@@ -104,8 +125,8 @@ private fun DrawScreenBody(
                 idShowSaveDrawingSheet = idShowSaveDrawingSheet,
                 canvasImageSaveOption = canvasImageSaveOption,
                 drawController = drawController,
-                userState = userState,
-                userEvent = userEvent,
+                uiState = userState,
+                onHandleEvent = onHandleEvent,
                 navController = navController
             )
             val context = LocalContext.current
@@ -252,9 +273,6 @@ private fun DrawClearCanvasDialog(
             isOpened = isOpenedClearCanvasDialog,
             onClickPositiveButton = {
                 drawController.reset()
-            },
-            onClickNegativeButton = {
-                //Do nothing
             }
         )
     }
@@ -265,8 +283,8 @@ private fun DrawSaveDrawingBottomSheet(
     idShowSaveDrawingSheet: MutableState<Boolean>,
     canvasImageSaveOption: MutableState<Int>,
     drawController: DrawController,
-    userState: CanvasUserState,
-    userEvent: CanvasUserEvents,
+    uiState: CanvasUIState,
+    onHandleEvent: (CanvasEvents) -> Unit,
     navController: NavController
 ) {
     val context = LocalContext.current
@@ -275,45 +293,43 @@ private fun DrawSaveDrawingBottomSheet(
         DrawSaveDrawingBottomSheet(onSave = { saveOption ->
             when (saveOption.type) {
                 SAVE_AS_JPEG, SAVE_AS_PNG, SHARE -> {
-                    canvasImageSaveOption.value = saveOption.type
-                    drawController.saveBitmap()
+                    onHandleEvent(CanvasEvents.SaveAndShare {
+                        saveOrShareImageFile(canvasImageSaveOption, drawController, saveOption)
+                    })
                 }
 
                 SAVE_AS_PROJECT -> {
                     coroutineScope.launch {
                         val thumbnail = drawController.getDrawingAsBase64()
-                        userEvent.onSave.invoke(drawController.exportPath().apply {
-                            this.thumbnail = thumbnail
-                        }) {
+                        onHandleEvent(CanvasEvents.SaveAndShareWithPayLoad(
+                            payLoad = drawController.exportPath().apply {
+                                this.thumbnail = thumbnail
+                            }
+                        ) {
                             idShowSaveDrawingSheet.value = false
                             navController.navigateUp()
-                        }
+                        })
                     }
                 }
 
                 EXPORT_PROJECT -> {
                     coroutineScope.launch {
                         val thumbnail = drawController.getDrawingAsBase64()
-                        userEvent.onExport(drawController.exportPath().apply {
+                        onHandleEvent(CanvasEvents.SaveAndShareWithPayLoad(drawController.exportPath().apply {
                             this.thumbnail = thumbnail
                         }) {
                             context.toast(R.string.str_project_exported_successfully_)
                             idShowSaveDrawingSheet.value = false
-                        }
+                        })
                     }
                 }
 
                 SHARE_PROJECT -> {
-                    coroutineScope.launch {
-                        val thumbnail = drawController.getDrawingAsBase64()
-                        shareFile(
-                            userState.drawCanvasPayLoadToString(
-                                drawController.exportPath().apply {
-                                    this.thumbnail = thumbnail
-                                }
-                            ), context
-                        )
-                    }
+                    onHandleEvent(CanvasEvents.SaveAndShare {
+                        coroutineScope.launch {
+                            shareProject(drawController, context, uiState.drawCanvasPayLoadToString)
+                        }
+                    })
                 }
             }
         }) {

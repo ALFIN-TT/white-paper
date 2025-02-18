@@ -5,5 +5,5 @@ import com.alfie.whitepaper.data.database.room.Project
 import kotlinx.coroutines.flow.Flow
 
 interface GetProjectsUseCase {
-    suspend operator fun invoke(): Flow<List<Project>>
+     operator fun invoke(): Flow<List<Project>>
 }

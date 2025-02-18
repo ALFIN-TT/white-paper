@@ -1,11 +1,9 @@
 package com.alfie.whitepaper.ui.screen.home.viewmodel
 
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.MutableState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.alfie.whitepaper.R
-import com.alfie.whitepaper.core.ui.core.StateHolder
 import com.alfie.whitepaper.data.constants.BY_SYSTEM
 import com.alfie.whitepaper.data.constants.DARK_MODE
 import com.alfie.whitepaper.data.constants.DarkThemeOption
@@ -13,7 +11,8 @@ import com.alfie.whitepaper.data.constants.LIGHT_MODE
 import com.alfie.whitepaper.data.database.room.Project
 import com.alfie.whitepaper.ui.common.canvas.DrawCanvasPayLoad
 import com.alfie.whitepaper.ui.screen.canvas.usecases.SaveProjectUseCase
-import com.alfie.whitepaper.ui.screen.home.state.HomeState
+import com.alfie.whitepaper.ui.screen.home.state.HomeEvent
+import com.alfie.whitepaper.ui.screen.home.state.HomeUIState
 import com.alfie.whitepaper.ui.screen.home.state.InitialHomeUserState
 import com.alfie.whitepaper.ui.screen.home.usecases.DeleteProjectUseCase
 import com.alfie.whitepaper.ui.screen.home.usecases.GetProjectsUseCase
@@ -22,7 +21,13 @@ import com.alfie.whitepaper.ui.screen.home.usecases.SetDynamicThemeStatusUseCase
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -37,27 +42,49 @@ class HomeUIViewModel @Inject constructor(
     private val setDarkThemeStatusUseCase: SetDarkThemeStatusUseCase
 ) : ViewModel() {
 
-    private val _homeState = mutableStateOf(StateHolder(HomeState()))
-    val homeState: State<StateHolder<HomeState>> = _homeState
-
-    var projectPathFromDeepLink: InitialHomeUserState = InitialHomeUserState()
+    private val _uiState = MutableStateFlow(HomeUIState())
+    val uiState = _uiState.asStateFlow()
 
     init {
         getProjects()
     }
 
+    fun init(
+        isEnableDynamicTheme: MutableState<Boolean>,
+        isEnabledDarkTheme: MutableState<Int>,
+        projectFromDeepLink: String
+    ) {
+        _uiState.update {
+            it.copy(
+                isEnableDynamicTheme = isEnableDynamicTheme,
+                isEnableDarkTheme = isEnabledDarkTheme,
+                initialState = InitialHomeUserState(projectFilePathFromDeepLink = projectFromDeepLink)
+            )
+        }
+    }
+
     private fun getProjects() {
-        viewModelScope.launch {
-            getProjectsUseCase.invoke().collect {
-                val projects = arrayListOf<DrawCanvasPayLoad>()
-                it.forEach { project ->
-                    projects.add(convertToDrawBoxPayLoad(project))
-                }
-                val homeState = HomeState(
-                    projects = projects
-                )
-                _homeState.value = StateHolder(homeState)
+        _uiState.update { it.copy(isLoading = true) }
+        getProjectsUseCase().onEach {
+            val projects = arrayListOf<DrawCanvasPayLoad>()
+            it.forEach { project ->
+                projects.add(convertToDrawBoxPayLoad(project))
             }
+            _uiState.update { state ->
+                state.copy(
+                    projects = projects.toImmutableList(),
+                    isLoading = false
+                )
+            }
+        }.launchIn(viewModelScope)
+    }
+
+    fun handleEvent(event: HomeEvent) {
+        when (event) {
+            is HomeEvent.DeleteProject -> onDeleteProjectRequested(event.id)
+            is HomeEvent.DarkThemeOptionName -> getDarkThemeOptionName(event.optionType)
+            is HomeEvent.SetDynamicTheme -> onDynamicThemeStatusChangeRequested(event.isEnable)
+            is HomeEvent.SetDarkTheme -> onDarkThemeStatusChangeRequested(event.option)
         }
     }
 
@@ -79,22 +106,13 @@ class HomeUIViewModel @Inject constructor(
     }
 
     fun onDeleteProjectRequested(
-        projectName: String, callback: () -> Unit
+        projectName: String
     ) {
+        _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch(Dispatchers.IO) {
-            deleteProjectUseCase.invoke(projectName)
-            getProjectsUseCase.invoke().collect {
-                val projects = arrayListOf<DrawCanvasPayLoad>()
-                it.forEach { project ->
-                    projects.add(convertToDrawBoxPayLoad(project))
-                }
-                val homeState = HomeState(
-                    projects = projects
-                )
-                _homeState.value = StateHolder(homeState)
-            }
-            callback()
+            deleteProjectUseCase(projectName)
         }
+        _uiState.update { it.copy(isLoading = true) }
     }
 
     fun onDarkThemeStatusChangeRequested(
