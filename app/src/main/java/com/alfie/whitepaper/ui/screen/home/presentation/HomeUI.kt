@@ -30,13 +30,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.alfie.whitepaper.R
 import com.alfie.whitepaper.core.utils.shareImageFromAssets
 import com.alfie.whitepaper.core.utils.toast
+import com.alfie.whitepaper.data.constants.BY_SYSTEM
 import com.alfie.whitepaper.data.constants.DarkThemeOption
 import com.alfie.whitepaper.data.constants.Keys
 import com.alfie.whitepaper.data.database.room.Project
@@ -48,6 +51,7 @@ import com.alfie.whitepaper.ui.screen.home.state.HomeEvent
 import com.alfie.whitepaper.ui.screen.home.state.HomeUIState
 import com.alfie.whitepaper.ui.screen.home.state.InitialHomeUserState
 import com.alfie.whitepaper.ui.screen.home.viewmodel.HomeUIViewModel
+import com.alfie.whitepaper.ui.theme.WhitePaperTheme
 
 
 @Composable
@@ -84,34 +88,43 @@ private fun DrawRootView(
     val isOpenedDeleteProjectDialog = rememberSaveable { mutableStateOf(false) }
     val selectedProjectName = rememberSaveable { mutableStateOf("") }
 
-    Scaffold { it ->
-        Column(
-            modifier = Modifier
-                .padding(it)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.secondaryContainer)
-        ) {
-            DrawPreferenceDialog(
-                uiState = uiState,
-                onHandleEvent = onHandleEvent,
-                isOpened = isOpenedAppPreferenceDialog,
-                onFindDarkThemeName = onFindDarkThemeName
+    Scaffold(
+        content = {
+            Column(
+                modifier = Modifier
+                    .padding(it)
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                DrawPreferenceDialog(
+                    uiState = uiState,
+                    onHandleEvent = onHandleEvent,
+                    isOpened = isOpenedAppPreferenceDialog,
+                    onFindDarkThemeName = onFindDarkThemeName
+                )
+                DrawDeleteProjectDialog(
+                    projectName = selectedProjectName,
+                    onHandleEvent = onHandleEvent,
+                    isOpened = isOpenedDeleteProjectDialog
+                )
+                DrawScreenBody(
+                    isOpenedAppPreferenceDialog = isOpenedAppPreferenceDialog,
+                    isOpenedDeleteProjectDialog = isOpenedDeleteProjectDialog,
+                    selectedProjectName = selectedProjectName,
+                    uiState = uiState,
+                    onImportProject = onImportProject,
+                    navController = navController
+                )
+            }
+        },
+        bottomBar = {
+            AdmobBanner(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(top = 8.dp, bottom = 4.dp)
             )
-            DrawDeleteProjectDialog(
-                projectName = selectedProjectName,
-                onHandleEvent = onHandleEvent,
-                isOpened = isOpenedDeleteProjectDialog
-            )
-            DrawScreenBody(
-                isOpenedAppPreferenceDialog = isOpenedAppPreferenceDialog,
-                isOpenedDeleteProjectDialog = isOpenedDeleteProjectDialog,
-                selectedProjectName = selectedProjectName,
-                uiState = uiState,
-                onImportProject = onImportProject,
-                navController = navController
-            )
-        }
-    }
+        })
 }
 
 
@@ -141,70 +154,67 @@ private fun DrawScreenBody(
         )
     }
     ProgressLoader(showProgressBar = uiState.isLoading)
-    LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(
-        start = 12.dp, top = 16.dp, end = 12.dp, bottom = 16.dp
-    ), content = {
-        item(span = { GridItemSpan(2) }) {
-            DrawAppPreferenceRow(
-                onClickSettings = {
-                    isOpenedAppPreferenceDialog.value = true
-                },
-                onClickShare = {
-                    shareImageFromAssets(
-                        context = context,
-                        sharePopupTitle = R.string.str_share,
-                        textContent = R.string.str_share_app_desc
-                    )
-                }
-            )
-        }
-        item(span = { GridItemSpan(1) }) {
-            ProjectCard(
-                label = R.string.str_new_project, icon = R.drawable.ic_new_project
-            ) {
-                navController.navigate(route = Screen.CanvasScreen.route.plus("?${Keys.PROJECT_NAME}=${""}"))
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(
+            start = 12.dp, top = 16.dp, end = 12.dp
+        ), content = {
+            item(span = { GridItemSpan(2) }) {
+                DrawAppPreferenceRow(
+                    onClickSettings = {
+                        isOpenedAppPreferenceDialog.value = true
+                    },
+                    onClickShare = {
+                        shareImageFromAssets(
+                            context = context,
+                            sharePopupTitle = R.string.str_share,
+                            textContent = R.string.str_share_app_desc
+                        )
+                    }
+                )
             }
-        }
-        item(span = { GridItemSpan(1) }) {
-            ProjectCard(
-                label = R.string.str_import, icon = R.drawable.ic_import
-            ) {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "text/plain"
-                    putExtra(
-                        DocumentsContract.EXTRA_INITIAL_URI,
-                        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                    )
+            item(span = { GridItemSpan(1) }) {
+                ProjectCard(
+                    label = R.string.str_new_project, icon = R.drawable.ic_new_project
+                ) {
+                    navController.navigate(route = Screen.CanvasScreen.route.plus("?${Keys.PROJECT_NAME}=${""}"))
                 }
-                startForResult.launch(intent)
             }
-        }
-        items(
-            span = { GridItemSpan(1) },
-            count = uiState.projects.size
-        ) {
-            DrawProjectCard(
-                count = it,
-                isOpenedDeleteProjectDialog = isOpenedDeleteProjectDialog,
-                selectedProjectName = selectedProjectName,
-                uiState = uiState,
-                navController = navController
-            )
-        }
-        item(span = { GridItemSpan(2) }) {
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(18.dp)
-            )
-        }
-        item(span = { GridItemSpan(2) }) {
-            AdmobBanner(
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    })
+            item(span = { GridItemSpan(1) }) {
+                ProjectCard(
+                    label = R.string.str_import, icon = R.drawable.ic_import
+                ) {
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "text/plain"
+                        putExtra(
+                            DocumentsContract.EXTRA_INITIAL_URI,
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        )
+                    }
+                    startForResult.launch(intent)
+                }
+            }
+            items(
+                span = { GridItemSpan(1) },
+                count = uiState.projects.size
+            ) {
+                DrawProjectCard(
+                    count = it,
+                    isOpenedDeleteProjectDialog = isOpenedDeleteProjectDialog,
+                    selectedProjectName = selectedProjectName,
+                    uiState = uiState,
+                    navController = navController
+                )
+            }
+            item(span = { GridItemSpan(2) }) {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                )
+            }
+        })
 }
 
 
@@ -304,5 +314,20 @@ private fun importProject(
         }
     } else {
         context.toast(R.string.msg_unable_to_import_project_file_corrupted)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppPreview() {
+    WhitePaperTheme {
+        val navController = rememberNavController()
+        DrawRootView(
+            navController = navController,
+            uiState = HomeUIState(),
+            onHandleEvent = {},
+            onFindDarkThemeName = { BY_SYSTEM },
+            onImportProject = {}
+        )
     }
 }
