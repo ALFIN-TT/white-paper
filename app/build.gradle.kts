@@ -15,7 +15,7 @@ plugins {
 
 android {
     namespace = "com.alfie.whitepaper"
-    compileSdk = 35
+    compileSdk = 36
 
     val prop = Properties().apply {
         load(FileInputStream(File(rootProject.rootDir, "keystore.properties")))
@@ -33,9 +33,9 @@ android {
     defaultConfig {
         applicationId = "com.alfie.whitepaper"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 6
-        versionName = "1.3.2"
+        targetSdk = 36
+        versionCode = 7
+        versionName = "1.3.3"
 
         resValue("string", "add_mob_app_id", "ca-app-pub-2034233031425888~5418118640")
         resValue("string", "add_mob_unit_id", "ca-app-pub-2034233031425888/8714365824")
