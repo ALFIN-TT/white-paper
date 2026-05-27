@@ -34,8 +34,8 @@ android {
         applicationId = "com.alfie.whitepaper"
         minSdk = 24
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.3.4"
+        versionCode = 9
+        versionName = "1.3.5"
 
         resValue("string", "add_mob_app_id", "ca-app-pub-2034233031425888~5418118640")
         resValue("string", "add_mob_unit_id", "ca-app-pub-2034233031425888/8714365824")
